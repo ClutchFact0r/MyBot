@@ -30,8 +30,6 @@ func main() {
 
 	// 初始化 openapi，正式环境
 	api := botgo.NewOpenAPI(botToken).WithTimeout(3 * time.Second)
-	// 沙箱环境
-	// api := botgo.NewSandboxOpenAPI(botToken).WithTimeout(3 * time.Second)
 
 	// 获取 websocket 信息
 	wsInfo, err := api.WS(ctx, nil, "")
@@ -41,7 +39,6 @@ func main() {
 
 	processor = Processor{api: api}
 
-	// websocket.RegisterResumeSignal(syscall.SIGUSR1)
 	// 根据不同的回调，生成 intents
 	intent := websocket.RegisterHandlers(
 		// at 机器人事件，目前是在这个事件处理中有逻辑，会回消息，其他的回调处理都只把数据打印出来，不做任何处理
