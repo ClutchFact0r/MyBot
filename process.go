@@ -4,31 +4,23 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/tencent-connect/botgo/dto"
-	"github.com/tencent-connect/botgo/dto/message"
-	"github.com/tencent-connect/botgo/openapi"
 )
 
 // Processor is a struct to process message
 type Processor struct {
-	api openapi.OpenAPI
+	api OpenAPI
 }
 
 // ProcessMessage is a function to process message
-func (p Processor) ProcessMessage(input string, data *dto.WSATMessageData) error {
+func (p Processor) ProcessMessage(input string, data *Message) error {
 	ctx := context.Background()
-	cmd := message.ParseCommand(input)
-	toCreate := &dto.MessageToCreate{
-		Content: "默认回复" + message.Emoji(307),
-		MessageReference: &dto.MessageReference{
-			MessageID:             data.ID,
-			IgnoreGetMessageError: true,
-		},
-	}
+	cmd := ParseCommand(input)
+	toCreate := &MessageToCreate{
+		Content: "默认回复"}
 
 	if cmd.Cmd == "加法运算" {
 		toCreate.Content = genReplyContent(data, input)
@@ -41,7 +33,7 @@ func (p Processor) ProcessMessage(input string, data *dto.WSATMessageData) error
 	return nil
 }
 
-func genReplyContent(data *dto.WSATMessageData, input string) string {
+func genReplyContent(data *Message, input string) string {
 	text := strings.Split(input, " ")
 	formula := text[1]
 
@@ -77,4 +69,34 @@ func genReplyContent(data *dto.WSATMessageData, input string) string {
 		tpl, time.Now().Format(time.RFC3339), formula, strconv.Itoa(sum),
 		getIP(),
 	)
+}
+
+type CMD struct {
+	Cmd     string
+	Content string
+}
+
+var atRE = regexp.MustCompile(`<@!\d+>`)
+
+const spaceCharSet = " \u00A0"
+
+func ETLInput(input string) string {
+	etlData := string(atRE.ReplaceAll([]byte(input), []byte("")))
+	etlData = strings.Trim(etlData, spaceCharSet)
+	return etlData
+}
+
+func ParseCommand(input string) *CMD {
+	input = ETLInput(input)
+	s := strings.Split(input, " ")
+	if len(s) < 2 {
+		return &CMD{
+			Cmd:     strings.Trim(input, spaceCharSet),
+			Content: "",
+		}
+	}
+	return &CMD{
+		Cmd:     strings.Trim(s[0], spaceCharSet),
+		Content: strings.Join(s[1:], " "),
+	}
 }
