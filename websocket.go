@@ -183,10 +183,8 @@ func (c *Client) Connect() error {
 	var err error
 	c.conn, _, err = wss.DefaultDialer.Dial(c.session.URL, nil)
 	if err != nil {
-		// log.Errorf("%s, connect err: %v", c.session, err)
 		return err
 	}
-	// log.Infof("%s, url %s, connected", c.session, c.session.URL)
 
 	return nil
 }
@@ -211,25 +209,7 @@ func (c *Client) Listening() error {
 		select {
 		case <-resumeSignal: // 使用信号量控制连接立即重连
 			return errors.New("received resumeSignal signal")
-		// case err := <-c.closeChan:
-		// 	// 关闭连接的错误码 https://bot.q.qq.com/wiki/develop/api/gateway/error/error.html
-		// 	log.Errorf("%s Listening stop. err is %v", c.session, err)
-		// 	// 不能够 identify 的错误
-		// 	if wss.IsCloseError(err, 4914, 4915) {
-		// 		err = errs.New(errs.CodeConnCloseCantIdentify, err.Error())
-		// 	}
-		// 	// 这里用 UnexpectedCloseError，如果有需要排除在外的 close error code，可以补充在第二个参数上
-		// 	// 4009: session time out, 发了 reconnect 之后马上关闭连接时候的错误码，这个是允许 resumeSignal 的
-		// 	if wss.IsUnexpectedCloseError(err, 4009) {
-		// 		err = errs.New(errs.CodeConnCloseCantResume, err.Error())
-		// 	}
-		// 	if DefaultHandlers.ErrorNotify != nil {
-		// 		// 通知到使用方错误
-		// 		DefaultHandlers.ErrorNotify(err)
-		// 	}
-		// 	return err
 		case <-c.heartBeatTicker.C:
-			// log.Debugf("%s listened heartBeat", c.session)
 			heartBeatEvent := &WSPayload{
 				WSPayloadBase: WSPayloadBase{
 					OPCode: WSHeartbeat,
@@ -245,10 +225,8 @@ func (c *Client) Listening() error {
 // Write 往 ws 写入数据
 func (c *Client) Write(message *WSPayload) error {
 	m, _ := json.Marshal(message)
-	// log.Infof("%s write %s message, %v", c.session, OPMeans(message.OPCode), string(m))
 
 	if err := c.conn.WriteMessage(wss.TextMessage, m); err != nil {
-		// log.Errorf("%s WriteMessage failed, %v", c.session, err)
 		c.closeChan <- err
 		return err
 	}
@@ -287,29 +265,21 @@ func (c *Client) readMessageToQueue() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
-			// log.Errorf("%s read message failed, %v, message %s", c.session, err, string(message))
 			close(c.messageQueue)
 			c.closeChan <- err
 			return
 		}
 		payload := &WSPayload{}
 		if err := json.Unmarshal(message, payload); err != nil {
-			// log.Errorf("%s json failed, %v", c.session, err)
 			continue
 		}
 		payload.RawMessage = message
-		// log.Infof("%s receive %s message, %s", c.session, OPMeans(payload.OPCode), string(message))
-		// 处理内置的一些事件，如果处理成功，则这个事件不再投递给业务
-		// if c.isHandleBuildIn(payload) {
-		// 	continue
-		// }
 		c.messageQueue <- payload
 	}
 }
 
 func (c *Client) listenMessageAndHandle() {
 	defer func() {
-		// panic，一般是由于业务自己实现的 handle 不完善导致
 		// 打印日志后，关闭这个连接，进入重连流程
 		if err := recover(); err != nil {
 			PanicHandler(err, c.session)
@@ -341,7 +311,6 @@ func (c *Client) saveSeq(seq uint32) {
 func (c *Client) startHeartBeatTicker(message []byte) {
 	helloData := &WSHelloData{}
 	if err := ParseData(message, helloData); err != nil {
-		// log.Errorf("%s hello data parse failed, %v, message %v", c.session, err, message)
 	}
 	// 根据 hello 的回包，重新设置心跳的定时器时间
 	c.heartBeatTicker.Reset(time.Duration(helloData.HeartbeatInterval) * time.Millisecond)

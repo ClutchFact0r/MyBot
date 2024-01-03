@@ -1,4 +1,4 @@
-// Package token 用于调用 openapi，websocket 的 token 对象。
+//用于调用 openapi，websocket 的 token 对象。
 package main
 
 import (
@@ -65,11 +65,9 @@ func (t *Token) LoadFromConfig(file string) error {
 	}
 	content, err := ioutil.ReadFile(file)
 	if err != nil {
-		// log.Errorf("read token from file failed, err: %v", err)
 		return err
 	}
 	if err = yaml.Unmarshal(content, &conf); err != nil {
-		// log.Errorf("parse config failed, err: %v", err)
 		return err
 	}
 	t.AppID = conf.AppID
