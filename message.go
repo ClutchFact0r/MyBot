@@ -46,35 +46,15 @@ type Message struct {
 	Author *User `json:"author"`
 	// 消息发送方Author的member属性，只是部分属性
 	Member *Member `json:"member"`
-	// 附件
-	// Attachments []*MessageAttachment `json:"attachments"`
-	// 结构化消息-embeds
-	// Embeds []*Embed `json:"embeds"`
 	// 消息中的提醒信息(@)列表
 	Mentions []*User `json:"mentions"`
-	// ark 消息
-	// Ark *Ark `json:"ark"`
-	// 私信消息
-	// DirectMessage bool `json:"direct_message"`
-	// 子频道 seq，用于消息间的排序，seq 在同一子频道中按从先到后的顺序递增，不同的子频道之前消息无法排序
-	// SeqInChannel string `json:"seq_in_channel"`
-	// 引用的消息
-	// MessageReference *MessageReference `json:"message_reference,omitempty"`
-	// 私信场景下，该字段用来标识从哪个频道发起的私信
-	// SrcGuildID string `json:"src_guild_id"`
 }
 
 // MessageToCreate 发送消息结构体定义
 type MessageToCreate struct {
 	Content string `json:"content,omitempty"`
-	// Embed   *Embed `json:"embed,omitempty"`
-	// Ark     *Ark   `json:"ark,omitempty"`
 	Image string `json:"image,omitempty"`
-	// 要回复的消息id，为空是主动消息，公域机器人会异步审核，不为空是被动消息，公域机器人会校验语料
 	MsgID string `json:"msg_id,omitempty"`
-	// MessageReference *MessageReference         `json:"message_reference,omitempty"`
-	// Markdown         *Markdown                 `json:"markdown,omitempty"`
-	// Keyboard         *keyboard.MessageKeyboard `json:"keyboard,omitempty"` // 消息按钮组件
 	EventID string `json:"event_id,omitempty"` // 要回复的事件id, 逻辑同MsgID
 }
 

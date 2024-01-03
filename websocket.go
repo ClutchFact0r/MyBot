@@ -256,7 +256,6 @@ func (c *Client) Identify() error {
 // Close 关闭连接
 func (c *Client) Close() {
 	if err := c.conn.Close(); err != nil {
-		// log.Errorf("%s, close conn err: %v", c.session, err)
 	}
 	c.heartBeatTicker.Stop()
 }

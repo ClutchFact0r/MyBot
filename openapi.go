@@ -30,9 +30,6 @@ type openAPI struct {
 	restyClient *resty.Client // resty client 复用
 }
 
-// VersionMapping openapi 版本管理
-var VersionMapping = map[uint32]OpenAPI{}
-
 var (
 	versionMapLock = sync.RWMutex{}
 	once           sync.Once
@@ -57,11 +54,6 @@ const (
 	APIv1 uint32 = 1 + iota
 	_
 )
-
-// Version 创建当前版本
-func (o *openAPI) Version() uint32 {
-	return APIv1
-}
 
 // Setup 生成一个实例
 func (o *openAPI) Setup(token *Token, inSandbox bool) OpenAPI {
