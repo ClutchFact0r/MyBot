@@ -8,7 +8,9 @@ QQ频道机器人方案设计文档
 
 4、注册websocket事件，@机器人事件、连接成功回调、连接关闭回调。
 
-5、设计信息处理函数，判断固定指令，计算相应算式，给出结果。
+5、Start()启动session manager,监控对话异常。
+
+6、设计信息处理函数，判断固定指令，计算相应算式，给出结果。
 
 
 
@@ -63,7 +65,33 @@ type MessageReference struct {
 
 ```golang
 type Processor struct {
-	api openapi.OpenAPI
+	api OpenAPI
+}
+
+type OpenAPI interface {
+	Base
+	WebsocketAPI
+	MessageAPI
+}
+
+// Base 基础能力接口
+type Base interface {
+	Setup(token *Token, inSandbox bool) OpenAPI
+	// WithTimeout 设置请求接口超时时间
+	WithTimeout(duration time.Duration) OpenAPI
+	// Transport 透传请求
+	Transport(ctx context.Context, method, url string, body interface{}) ([]byte, error)
+}
+
+// WebsocketAPI websocket 接入地址
+type WebsocketAPI interface {
+	WS(ctx context.Context, params map[string]string, body string) (*WebsocketAP, error)
+}
+
+// MessageAPI 消息相关接口
+type MessageAPI interface {
+	Message(ctx context.Context, channelID string, messageID string) (*Message, error)
+	PostMessage(ctx context.Context, channelID string, msg *MessageToCreate) (*Message, error)
 }
 ```
 
@@ -74,6 +102,7 @@ func ATMessageEventHandler() event.ATMessageEventHandler//处理@机器人信息
 func (p Processor) ProcessMessage(input string, data *dto.WSATMessageData)//信息处理函数
 func genReplyContent(data *dto.WSATMessageData, input string)//加法功能实现函数
 func getIP()//获取IP函数
+func RRegisterHandlers(handlers ...interface{}) Intent//根据事件类型注册
 
 ```
 
