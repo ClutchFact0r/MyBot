@@ -2,7 +2,8 @@ package main
 
 var eventParseFuncMap = map[int]map[EventType]eventParseFunc{
 	WSDispatchEvent: {
-		EventAtMessageCreate: atMessageHandler,
+		EventAtMessageCreate:     atMessageHandler,
+		EventDirectMessageCreate: directMessageHandler,
 	},
 }
 

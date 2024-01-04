@@ -16,6 +16,7 @@ const (
 	EventMessageReactionRemove EventType = "MESSAGE_REACTION_REMOVE"
 	EventAtMessageCreate       EventType = "AT_MESSAGE_CREATE"
 	EventPublicMessageDelete   EventType = "PUBLIC_MESSAGE_DELETE"
+	EventDirectMessageCreate   EventType = "DIRECT_MESSAGE_CREATE"
 )
 
 // intentEventMap 不同 intent 对应的事件定义
@@ -80,4 +81,15 @@ func transposeIntentEventMap(input map[Intent][]EventType) map[EventType]Intent 
 		}
 	}
 	return result
+}
+
+func directMessageHandler(payload *WSPayload, message []byte) error {
+	data := &WSDirectMessageData{}
+	if err := ParseData(message, data); err != nil {
+		return err
+	}
+	if DefaultHandlers.DirectMessage != nil {
+		return DefaultHandlers.DirectMessage(payload, data)
+	}
+	return nil
 }

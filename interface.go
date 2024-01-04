@@ -10,6 +10,7 @@ type OpenAPI interface {
 	Base
 	WebsocketAPI
 	MessageAPI
+	DirectMessageAPI
 }
 
 // Base 基础能力接口
@@ -30,4 +31,13 @@ type WebsocketAPI interface {
 type MessageAPI interface {
 	Message(ctx context.Context, channelID string, messageID string) (*Message, error)
 	PostMessage(ctx context.Context, channelID string, msg *MessageToCreate) (*Message, error)
+	PostDirectMessage(ctx context.Context, dm *DirectMessage, msg *MessageToCreate) (*Message, error)
+}
+
+// DirectMessageAPI 信息相关接口
+type DirectMessageAPI interface {
+	// CreateDirectMessage 创建私信频道
+	CreateDirectMessage(ctx context.Context, dm *DirectMessageToCreate) (*DirectMessage, error)
+	// PostDirectMessage 在私信频道内发消息
+	PostDirectMessage(ctx context.Context, dm *DirectMessage, msg *MessageToCreate) (*Message, error)
 }

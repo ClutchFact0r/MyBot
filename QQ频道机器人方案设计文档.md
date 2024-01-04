@@ -103,6 +103,7 @@ func (p Processor) ProcessMessage(input string, data *dto.WSATMessageData)//信�
 func genReplyContent(data *dto.WSATMessageData, input string)//加法功能实现函数
 func getIP()//获取IP函数
 func RRegisterHandlers(handlers ...interface{}) Intent//根据事件类型注册
+func hintIdiom(data *Message, input string) string//成语接龙提示功能
 
 ```
 

@@ -50,11 +50,29 @@ type Message struct {
 	Mentions []*User `json:"mentions"`
 }
 
+// DirectMessage 私信结构定义，一个 DirectMessage 为两个用户之间的一个私信频道，简写为 DM
+type DirectMessage struct {
+	// 频道ID
+	GuildID string `json:"guild_id"`
+	// 子频道id
+	ChannelID string `json:"channel_id"`
+	// 私信频道创建的时间戳
+	CreateTime string `json:"create_time"`
+}
+
+// DirectMessageToCreate 创建私信频道的结构体定义
+type DirectMessageToCreate struct {
+	// 频道ID
+	SourceGuildID string `json:"source_guild_id"`
+	// 用户ID
+	RecipientID string `json:"recipient_id"`
+}
+
 // MessageToCreate 发送消息结构体定义
 type MessageToCreate struct {
 	Content string `json:"content,omitempty"`
-	Image string `json:"image,omitempty"`
-	MsgID string `json:"msg_id,omitempty"`
+	Image   string `json:"image,omitempty"`
+	MsgID   string `json:"msg_id,omitempty"`
 	EventID string `json:"event_id,omitempty"` // 要回复的事件id, 逻辑同MsgID
 }
 
@@ -87,7 +105,7 @@ func (o *openAPI) Message(ctx context.Context, channelID string, messageID strin
 
 const domain = "api.sgroup.qq.com"
 const sandBoxDomain = "sandbox.api.sgroup.qq.com"
-
+const dmsURI string = "/dms/{guild_id}/messages"
 const scheme = "https"
 
 func (o *openAPI) getURL(endpoint string) string {
@@ -122,4 +140,18 @@ type WSPayloadBase struct {
 	OPCode int       `json:"op"`
 	Seq    uint32    `json:"s,omitempty"`
 	Type   EventType `json:"t,omitempty"`
+}
+
+// PostDirectMessage 在私信频道内发消息
+func (o *openAPI) PostDirectMessage(ctx context.Context,
+	dm *DirectMessage, msg *MessageToCreate) (*Message, error) {
+	resp, err := o.request(ctx).
+		SetResult(Message{}).
+		SetPathParam("guild_id", dm.GuildID).
+		SetBody(msg).
+		Post(o.getURL(dmsURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*Message), nil
 }
