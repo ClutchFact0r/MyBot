@@ -59,6 +59,8 @@ func (l *ChanManager) Start(apInfo *WebsocketAP, token *Token, intents *Intent) 
 		l.sessionChan <- session
 	}
 
+	go processor.DailyPush()
+
 	for session := range l.sessionChan {
 		// MaxConcurrency 代表的是每 5s 可以连多少个请求
 		time.Sleep(startInterval)

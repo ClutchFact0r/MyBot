@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/tidwall/gjson"
 )
@@ -154,4 +156,48 @@ func (o *openAPI) PostDirectMessage(ctx context.Context,
 		return nil, err
 	}
 	return resp.Result().(*Message), nil
+}
+
+type CMD struct {
+	Cmd     string
+	Content string
+}
+
+var atRE = regexp.MustCompile(`<@!\d+>`)
+
+const spaceCharSet = " \u00A0"
+
+func ETLInput(input string) string {
+	etlData := string(atRE.ReplaceAll([]byte(input), []byte("")))
+	etlData = strings.Trim(etlData, spaceCharSet)
+	return etlData
+}
+
+func ParseCommand(input string) *CMD {
+	input = ETLInput(input)
+	s := strings.Split(input, " ")
+	if len(s) < 2 {
+		return &CMD{
+			Cmd:     strings.Trim(input, spaceCharSet),
+			Content: "",
+		}
+	}
+	return &CMD{
+		Cmd:     strings.Trim(s[0], spaceCharSet),
+		Content: strings.Join(s[1:], " "),
+	}
+}
+
+const userMeDMURI string = "/users/@me/dms"
+
+// CreateDirectMessage 创建私信频道
+func (o *openAPI) CreateDirectMessage(ctx context.Context, dm *DirectMessageToCreate) (*DirectMessage, error) {
+	resp, err := o.request(ctx).
+		SetResult(DirectMessage{}).
+		SetBody(dm).
+		Post(o.getURL(userMeDMURI))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result().(*DirectMessage), nil
 }

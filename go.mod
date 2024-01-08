@@ -9,6 +9,7 @@ require (
 	github.com/fumiama/imgsz v0.0.2 // indirect
 	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/mattn/go-sqlite3 v1.14.19 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/tencent-connect/botgo v0.1.6 // indirect

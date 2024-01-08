@@ -82,14 +82,3 @@ func transposeIntentEventMap(input map[Intent][]EventType) map[EventType]Intent 
 	}
 	return result
 }
-
-func directMessageHandler(payload *WSPayload, message []byte) error {
-	data := &DirectMessage{}
-	if err := ParseData(message, data); err != nil {
-		return err
-	}
-	if DefaultHandlers.DirectMessage != nil {
-		return DefaultHandlers.DirectMessage(payload, data)
-	}
-	return nil
-}

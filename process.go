@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Processor is a struct to process message
@@ -17,17 +19,23 @@ type Processor struct {
 	api OpenAPI
 }
 
+var IdiomUsers = map[string]IdiomUser{}
+
+type IdiomUser struct {
+	score    int
+	lastward rune
+}
+
 const (
 	start int = 1
 	stop  int = 0
 )
 
-var flag int = stop //是否正在成语接龙
-var lastword rune   //用户需要给出的成语最后一个字
-var size int        //成语长度
+var size int //成语长度
 
 // ProcessMessage is a function to process message
 func (p Processor) ProcessMessage(input string, data *Message) error {
+	fmt.Printf("data.ChannelID: %v\n", data.ChannelID)
 	ctx := context.Background()
 	cmd := ParseCommand(input)
 	toCreate := &MessageToCreate{
@@ -57,9 +65,20 @@ func (p Processor) ProcessMessage(input string, data *Message) error {
 	case "私信":
 		p.dmHandler(data)
 		return nil
+	case "成语接龙玩家积分榜":
+		toCreate.Content = ShowIdiomTable()
+		if _, err := p.api.PostMessage(ctx, data.ChannelID, toCreate); err != nil {
+			log.Println(err)
+		}
 	default:
-		if flag == start {
+		_, exist := IdiomUsers[data.Author.Username]
+		if exist {
 			toCreate.Content = genAnsweridiom(data, input)
+			if _, err := p.api.PostMessage(ctx, data.ChannelID, toCreate); err != nil {
+				log.Println(err)
+			}
+		} else {
+			toCreate.Content = "抱歉，此指令未知！"
 			if _, err := p.api.PostMessage(ctx, data.ChannelID, toCreate); err != nil {
 				log.Println(err)
 			}
@@ -72,7 +91,7 @@ func (p Processor) dmHandler(data *Message) {
 	dm, err := p.api.CreateDirectMessage(
 		context.Background(), &DirectMessageToCreate{
 			SourceGuildID: data.GuildID,
-			RecipientID:   data.Author.ID,
+			RecipientID:   data.Author.Username,
 		},
 	)
 	if err != nil {
@@ -100,8 +119,14 @@ func hiReply() string {
 	return fmt.Sprintf(str)
 }
 
+func ShowIdiomTable() string {
+	var str = `你好，成语接龙玩家积分榜如下：%s
+	`
+	info := PrintScoreTable()
+	return fmt.Sprintf(str, info)
+}
+
 func genReplyidiom(data *Message, input string) string {
-	flag = start
 
 	var str = `你好：
 	即将开始成语接龙，我给出的成语是：%s
@@ -121,49 +146,67 @@ func genReplyidiom(data *Message, input string) string {
 	randomKey := keys[randomIndex]
 	randomValue := idiomsMap[randomKey]
 
-	lastword, size = utf8.DecodeLastRuneInString(randomValue)
-	if lastword == utf8.RuneError && (size == 0 || size != len(randomValue)) {
+	last, size := utf8.DecodeLastRuneInString(randomValue)
+	IdiomUsers[data.Author.Username] = IdiomUser{
+		score:    0,
+		lastward: last,
+	}
+	if IdiomUsers[data.Author.Username].lastward == utf8.RuneError && (size == 0 || size != len(randomValue)) {
 		fmt.Println("字符串为空或不是有效的UTF-8编码")
 	}
-	return fmt.Sprintf(str, randomValue, lastword)
+	return fmt.Sprintf(str, randomValue, IdiomUsers[data.Author.Username].lastward)
 }
 
+// 用户游戏独立，每日计算积分规则
+// 推送每日用户积分
+// sql
 func genAnsweridiom(data *Message, input string) string {
 	var context = ""
 	firstword, size := utf8.DecodeRuneInString(input)
 	if firstword == utf8.RuneError && (size == 0 || size != len(input)) {
 		fmt.Println("字符串为空或不是有效的UTF-8编码")
 	}
-	if lastword != firstword {
+	if IdiomUsers[data.Author.Username].lastward != firstword {
 		context = `你好：
 		你给出的成语不符合成语接龙规则，请给出以"%c"开头的成语:
 		`
-		return fmt.Sprintf(context, lastword)
+		return fmt.Sprintf(context, IdiomUsers[data.Author.Username].lastward)
+	} else {
+		user := IdiomUsers[data.Author.Username]
+		user.score++
+		IdiomUsers[data.Author.Username] = user
+		fmt.Printf("IdiomUsers[data.Author.Username].score: %v\n", IdiomUsers[data.Author.Username].score)
 	}
 
-	inputFirstWord := string(input[3])
+	inputFirstWord, size := utf8.DecodeLastRuneInString(input)
 	inputLastWord, size := utf8.DecodeLastRuneInString(input)
 	if inputLastWord == utf8.RuneError && (size == 0 || size != len(input)) {
 		fmt.Println("字符串为空或不是有效的UTF-8编码")
 	}
 
-	ans, exists := idiomsMap[inputFirstWord]
+	ans, exists := idiomsMap[string(inputFirstWord)]
 	if exists {
 		context = `你好：
 		我给出的成语是：%s
 		请继续接龙，给出一个"%c"开头的成语:
 		`
-		lastword, size = utf8.DecodeLastRuneInString(ans)
-		if lastword == utf8.RuneError && (size == 0 || size != len(ans)) {
+		user := IdiomUsers[data.Author.Username]
+		user.lastward, size = utf8.DecodeLastRuneInString(ans)
+		if user.lastward == utf8.RuneError && (size == 0 || size != len(ans)) {
 			fmt.Println("字符串为空或不是有效的UTF-8编码")
 		}
-
+		IdiomUsers[data.Author.Username] = user
 		return fmt.Sprintf(
-			context, ans, lastword,
+			context, ans, IdiomUsers[data.Author.Username].lastward,
 		)
 	} else {
-		flag = stop
 		context = `词库中未找到一个以"%c"开头的成语，游戏结束！`
+		fmt.Printf("user.score: %v\n", IdiomUsers[data.Author.Username].score)
+		err := Insert(data.Author.Username, IdiomUsers[data.Author.Username].score)
+		delete(idiomsMap, data.Author.Username)
+		if err != nil {
+			fmt.Println("Error inserting user:", err)
+		}
 		return fmt.Sprintf(context, inputLastWord)
 	}
 
@@ -224,46 +267,54 @@ func genReplyContent(data *Message, input string) string {
 	)
 }
 
-type CMD struct {
-	Cmd     string
-	Content string
-}
-
-var atRE = regexp.MustCompile(`<@!\d+>`)
-
-const spaceCharSet = " \u00A0"
-
-func ETLInput(input string) string {
-	etlData := string(atRE.ReplaceAll([]byte(input), []byte("")))
-	etlData = strings.Trim(etlData, spaceCharSet)
-	return etlData
-}
-
-func ParseCommand(input string) *CMD {
-	input = ETLInput(input)
-	s := strings.Split(input, " ")
-	if len(s) < 2 {
-		return &CMD{
-			Cmd:     strings.Trim(input, spaceCharSet),
-			Content: "",
+func (p Processor) DailyPush() {
+	var printed18 int32
+	checkAndPrint18 := func() {
+		now := time.Now()
+		hour, minute := now.Hour(), now.Minute()
+		if hour == 21 && minute == 0 && atomic.CompareAndSwapInt32(&printed18, 0, 1) {
+			fmt.Println("打印！！！")
+			ctx := context.Background()
+			toCreate := &MessageToCreate{
+				Content: "默认回复"}
+			toCreate.Content = ShowIdiomTable()
+			if _, err := p.api.PostMessage(ctx, "634993940", toCreate); err != nil {
+				log.Println(err)
+			}
+			DeleteTable()
+			CreateDatabase()
 		}
 	}
-	return &CMD{
-		Cmd:     strings.Trim(s[0], spaceCharSet),
-		Content: strings.Join(s[1:], " "),
+
+	// 每天重置标志位的函数
+	resetFlags := func() {
+		now := time.Now()
+		nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+		sleepDuration := nextMidnight.Sub(now)
+		time.Sleep(sleepDuration)
+		atomic.StoreInt32(&printed18, 0)
 	}
+
+	// 启动定时任务1：每隔1秒检查一次是否是18点整
+	go func() {
+		for range time.Tick(1 * time.Second) {
+			checkAndPrint18()
+		}
+	}()
+
+	// 启动定时任务以每天重置标志位
+	go func() {
+		for {
+			resetFlags()
+		}
+	}()
 }
 
-const userMeDMURI string = "/users/@me/dms"
-
-// CreateDirectMessage 创建私信频道
-func (o *openAPI) CreateDirectMessage(ctx context.Context, dm *DirectMessageToCreate) (*DirectMessage, error) {
-	resp, err := o.request(ctx).
-		SetResult(DirectMessage{}).
-		SetBody(dm).
-		Post(o.getURL(userMeDMURI))
-	if err != nil {
-		return nil, err
-	}
-	return resp.Result().(*DirectMessage), nil
-}
+// 			ctx := context.Background()
+// 			toCreate := &MessageToCreate{
+// 				Content: "默认回复"}
+// 			toCreate.Content = ShowIdiomTable()
+// 			if _, err := p.api.PostMessage(ctx, "sx1cb4f6b7", toCreate); err != nil {
+// 				log.Println(err)
+// 			}
+// 			DeleteTable()

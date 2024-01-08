@@ -8,12 +8,15 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // 消息处理器，持有 openapi 对象
 var processor Processor
 
 func main() {
+	CreateDatabase()
 	ctx := context.Background()
 	// 加载 appid 和 token
 	botToken := New(TypeBot)
@@ -40,10 +43,11 @@ func main() {
 		// 连接关闭回调
 		ErrorNotifyHandler(),
 	)
-	
+
 	if err = NewSessionManager().Start(wsInfo, botToken, &intent); err != nil {
 		log.Fatalln(err)
 	}
+
 }
 
 // ReadyHandler 自定义 ReadyHandler 感知连接成功事件

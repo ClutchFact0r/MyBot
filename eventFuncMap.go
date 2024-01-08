@@ -19,3 +19,14 @@ func atMessageHandler(payload *WSPayload, message []byte) error {
 	}
 	return nil
 }
+
+func directMessageHandler(payload *WSPayload, message []byte) error {
+	data := &DirectMessage{}
+	if err := ParseData(message, data); err != nil {
+		return err
+	}
+	if DefaultHandlers.DirectMessage != nil {
+		return DefaultHandlers.DirectMessage(payload, data)
+	}
+	return nil
+}
