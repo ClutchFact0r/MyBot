@@ -202,7 +202,7 @@ func genAnsweridiom(data *Message, input string) string {
 	} else {
 		context = `词库中未找到一个以"%c"开头的成语，游戏结束！`
 		fmt.Printf("user.score: %v\n", IdiomUsers[data.Author.Username].score)
-		err := Insert(data.Author.Username, IdiomUsers[data.Author.Username].score)
+		err := UpdateScore(data.Author.Username, IdiomUsers[data.Author.Username].score)
 		delete(idiomsMap, data.Author.Username)
 		if err != nil {
 			fmt.Println("Error inserting user:", err)
@@ -272,7 +272,7 @@ func (p Processor) DailyPush() {
 	checkAndPrint18 := func() {
 		now := time.Now()
 		hour, minute := now.Hour(), now.Minute()
-		if hour == 21 && minute == 0 && atomic.CompareAndSwapInt32(&printed18, 0, 1) {
+		if hour == 16 && minute == 11 && atomic.CompareAndSwapInt32(&printed18, 0, 1) {
 			fmt.Println("打印！！！")
 			ctx := context.Background()
 			toCreate := &MessageToCreate{
@@ -282,7 +282,6 @@ func (p Processor) DailyPush() {
 				log.Println(err)
 			}
 			DeleteTable()
-			CreateDatabase()
 		}
 	}
 
